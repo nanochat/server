@@ -1,0 +1,203 @@
+swagger: "2.0"
+info:
+  version: "0.0.1"
+  title: "NanoChat"
+paths:
+  /references:
+    get:
+      summary: "Retrieves the references"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "Success"
+          schema:
+            $ref: "#/definitions/References"
+  /encrypted:
+    post:
+      summary: "Sends a new encrypted body"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Encrypted body"
+        required: true
+        schema:
+          $ref: "#/definitions/EncryptedBody"
+      responses:
+        200:
+          description: "Success<br>"
+          examples:
+            application/json: {"body":"..."}
+          schema:
+            $ref: "#/definitions/EncryptedBody"
+        201:
+          description: "Empty content"
+        400:
+          description: "Bad request"
+definitions:
+  References:
+    type: "object"
+    properties:
+      public_key:
+        type: "string"
+        description: "The public key"
+  EncryptedBody:
+    type: "object"
+    properties:
+      body:
+        type: "string"
+        description: "The body AES encrypted with the plain random key. The plain body follows the Body model"
+      user:
+        type: "string"
+        description: "(optional) The username of the user this message is from"
+      key:
+        type: "string"
+        description: "The random key RSA encrypted with the target public key then the source private key if available. Only in the request, not the response"
+  Body:
+    type: "object"
+    properties:
+      created_at:
+        type: "integer"
+        description: "The UNIX UTC timestamp of the current date"
+      name:
+        type: "string"
+        description: "The name of the body"
+      payload:
+        type: "string"
+        description: "(optional) The payload of the body. It depends on the name."
+  User:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+      username:
+        type: "string"
+      display_name:
+        type: "string"
+      public_key:
+        type: "string"
+  UpdateUser:
+    allOf:
+        - $ref: '#/definitions/User'
+        - $ref: '#/definitions/PrivateKeyUser'
+        - type: object
+          properties:
+            sync_password:
+              type: string
+              description: "(optional) if the user has agreed to store its encrypted private key on the server, this is the sync password"
+  PrivateKeyUser:
+    type: object
+    properties:
+      private_key:
+        type: string
+        description: "(optional) if the user has agreed to store it on the server, this is the RSA private key AES encrypted with the user's password"
+  SyncUser:
+    properties:
+      sync_password:
+        type: string
+      username:
+        type: "string"
+  CompleteUser:
+    allOf:
+        - $ref: '#/definitions/UpdateUser'
+        - type: object
+          properties:
+            complete_token:
+              type: string
+  BaseConversation:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+  CreateConversation:
+    type: "object"
+    properties:
+      label:
+        type: "string"
+      users:
+        type: "array"
+        items:
+          $ref: "#/definitions/User"
+  Conversation:
+    allOf:
+        - $ref: '#/definitions/BaseConversation'
+        - $ref: '#/definitions/CreateConversation'
+  MessageConversation:
+    allOf:
+        - $ref: '#/definitions/BaseConversation'
+        - $ref: '#/definitions/CreateConversation'
+        - type: object
+          properties:
+            messages:
+              type: array
+              items:
+                $ref: "#/definitions/Message"
+  BaseMessage:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+  CreateMessage:
+    allOf:
+        - type: object
+          properties:
+            conversation_id:
+              type: "string"
+        - $ref: '#/definitions/KeysMessage'
+        - $ref: '#/definitions/ContentMessage'
+  UpdateMessage:
+    allOf:
+        - $ref: '#/definitions/BaseMessage'
+        - $ref: '#/definitions/KeysMessage'
+        - $ref: '#/definitions/ContentMessage'
+  KeysMessage:
+    type: object
+    properties:
+      keys:
+        type: "object"
+        additionalProperties:
+          type: string
+        description: "for each username recipient of the message, key RSA encrypted with the author private key and the recipient public key"
+  ContentMessage:
+    type: "object"
+    properties:
+      text:
+        type: "string"
+        description: "text AES encrypted with plain key"
+      file:
+        $ref: '#/definitions/File'
+  Message:
+    allOf:
+        - type: object
+          properties:
+            created_at:
+              type: "integer"
+              description: "The UNIX UTC timestamp of the creation date of the message"
+            updated_at:
+              type: "integer"
+              description: "The UNIX UTC timestamp of the updated date of the message"
+            author:
+              type: "string"
+            key: 
+              type: "string"
+              description: "key RSA encrypted with the author private key and the recipient public key"
+        - $ref: '#/definitions/ContentMessage'
+  File:
+    type: "object"
+    properties:
+      data:
+        type: "string"
+        description: "data AES encrypted with plain key"
+      name:
+        type: "string"
+  List:
+    type: "object"
+    properties:
+      items:
+        type: array
+        items:
+          type: "string"
